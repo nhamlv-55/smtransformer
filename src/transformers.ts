@@ -69,11 +69,9 @@ export class ASTTransformer extends Object{
 
     runStack(ast: AST, tStack: Transformer[]): AST{
         let new_ast = _.cloneDeep(ast);
-        console.log("tStack", tStack);
         //loop over all transformer
         let t_index = 0;
         while(t_index < tStack.length){
-            console.log(tStack[t_index]);
             //apply the transformer to all the node if possible.
             let dirty = true;
 
@@ -386,7 +384,6 @@ export class AST {
 
     null_node = new ASTNode(-100, "null-node", -100, []);
     constructor(formula: string){
-        console.log(parse(formula));
         this.lstToAST(-1, parse(formula));
         this.buildVis();
     }
@@ -453,7 +450,6 @@ export class AST {
     }
 
     buildVis(){
-        console.log(this.nodeList)
         this.visNodes = [];
         this.visEdges = [];
 

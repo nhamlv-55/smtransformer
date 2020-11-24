@@ -8,6 +8,7 @@ export interface SExpNode {
 }
 export interface SExp extends Array<SExpNode | SExp> {}
 export function parse(input: string): SExp {
+  console.log("**"+input+"//");
   let i = 0;
   let line_number = 0;
   let offset = 0;

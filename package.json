@@ -34,6 +34,26 @@
 			{
 				"command": "smtransformer.saveStack",
 				"title": "Save Transformer Stack"
+			},
+			{
+				"command": "smtransformer.moveLeft",
+				"title": "Move Left"
+			},
+			{
+				"command": "smtransformer.moveRight",
+				"title": "Move Right"
+			},
+			{
+				"command": "smtransformer.changeBreak",
+				"title": "Line Break"
+			},
+			{
+				"command": "smtransformer.replace",
+				"title": "Replace Token"
+			},
+			{
+				"command": "smtransformer.blast",
+				"title": "Blast"
 			}
 		]
 	},

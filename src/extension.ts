@@ -27,6 +27,7 @@ function getSelectedNode(ast){
 export function activate(context: vscode.ExtensionContext) {
 	const transformer = new ASTTransformer();
 	var transformerStack = new Array<Transformer>();
+	var formulaStack = new Array<String>();
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "smtransformer" is now active!');
@@ -42,10 +43,14 @@ export function activate(context: vscode.ExtensionContext) {
 			try {
 				let [dirty, newAst] = transformer.run(selectedNode, currentAST, t);
 				if (dirty) {
+					let stringRep = newAst.toString(-1, newAst.nodeList[0]);
 					//guess the condition
 					t.condition = transformer.getCondition(action, selectedNode, currentAST);
 					transformerStack.push(t);
-					editor?.edit(edit => { edit.replace(getRange(editor), newAst.toString(-1, newAst.nodeList[0]))});
+					formulaStack.push(stringRep);
+					editor?.edit(edit => { 
+						edit.replace(getRange(editor), stringRep);
+					});
 				}
 				return [dirty, newAst];
 			} catch (error) {
@@ -111,6 +116,76 @@ export function activate(context: vscode.ExtensionContext) {
 		let [dirty, res] = applyLocal("squashNegation", {});
 		vscode.window.showInformationMessage('squashNegation from smtransformer!');
 	});
+	vscode.commands.registerCommand('smtransformer.moveLeft', () => {
+		let [dirty, res] = applyLocal("move", {"direction": "l"});
+		vscode.window.showInformationMessage('moveLeft from smtransformer!');
+	});
+	vscode.commands.registerCommand('smtransformer.moveRight', () => {
+		let [dirty, res] = applyLocal("move", {"direction": "r"});
+		vscode.window.showInformationMessage('moveRight from smtransformer!');
+	});
+	vscode.commands.registerCommand('smtransformer.changeBreak', () => {
+		let [dirty, res] = applyLocal("changeBreak", {});
+		vscode.window.showInformationMessage('changeBreak from smtransformer!');
+	});
+	vscode.commands.registerCommand('smtransformer.replace', ()=>{
+		const editor = vscode.window.activeTextEditor;
+		const fullText = editor?.document.getText()!;
+		let currentAST = new AST(fullText);
+		let selectedNode = getSelectedNode(currentAST);
+
+		let options: vscode.InputBoxOptions = {
+			prompt: "Replace token.",
+			value: `{"source": "${selectedNode.token}", "target": "", "regex": false}`
+		};
+
+		vscode.window.showInputBox(options).then(value => {
+			if (!value) return;
+			console.log(value);
+			let [dirty, res] = applyLocal("replace", JSON.parse(value));
+			// show the next dialog, etc.
+		});
+	});
+	vscode.commands.registerCommand('smtransformer.blast', () => {
+		const options: vscode.OpenDialogOptions = {
+			canSelectMany: false,
+			openLabel: 'Load a transformer Stack',
+		};
+
+		vscode.window.showOpenDialog(options).then(fileUri => {
+			if (fileUri && fileUri[0]) {
+				vscode.workspace.openTextDocument(fileUri[0]).then((document) => {
+					let text = document.getText();
+					transformerStack = JSON.parse(text);
+					const editor = vscode.window.activeTextEditor;
+					const fullText = editor?.document.getText()!;
+
+					let allFormulas = fullText.split(/\n\s*\n/);
+
+			
+					console.log(allFormulas);
+					console.log(transformerStack);
+					console.log("pew pew !");
+
+					let output = "";
+					for (var f of allFormulas) {
+						if (f !== "") {
+							let ast = new AST(f);
+							let newAST = transformer.runStack(ast, transformerStack);
+							let newFormula = newAST.toString(-1, newAST.nodeList[0]);
+							output += newFormula + "\n\n";
+						}
+					}
+
+					editor?.edit(edit => { 
+						edit.replace(getRange(editor), output);
+					});
+
+				});
+			}
+		});
+	})
+
 }
 
 // this method is called when your extension is deactivated
