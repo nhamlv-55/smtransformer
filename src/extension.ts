@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import {AST, ASTNode, ASTTransformer} from './transformers';
+import {AST, ASTNode, ASTTransformer, Transformer} from './transformers';
 const {uuid} = require('uuidv4');
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -23,11 +23,38 @@ function getSelectedNode(ast){
 	return selectedNode;
 }
 
+
 export function activate(context: vscode.ExtensionContext) {
 	const transformer = new ASTTransformer();
+	var transformerStack = new Array<Transformer>();
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "smtransformer" is now active!');
+
+	function applyLocal(action: string, params:{}): [boolean, AST] {
+		const editor = vscode.window.activeTextEditor;
+		const fullText = editor?.document.getText()!;
+		let currentAST = new AST(fullText);
+		let selectedNode = getSelectedNode(currentAST);
+
+		if(selectedNode){
+			let t = { "action": action, "params": params, "condition": "true" };
+			try {
+				let [dirty, newAst] = transformer.run(selectedNode, currentAST, t);
+				if (dirty) {
+					//guess the condition
+					t.condition = transformer.getCondition(action, selectedNode, currentAST);
+					transformerStack.push(t);
+					editor?.edit(edit => { edit.replace(getRange(editor), newAst.toString(-1, newAst.nodeList[0]))});
+				}
+				return [dirty, newAst];
+			} catch (error) {
+				console.error(error);
+				debugger;
+			}
+		}
+		return [false, currentAST];
+	};
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
@@ -42,7 +69,8 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('smtransformer.openEditor', () => {
 		const editor = vscode.window.activeTextEditor;
 		const selectedText = editor!.document.getText(editor!.selection);
-		var setting: vscode.Uri = vscode.Uri.parse("untitled:"+uuid()+".txt");
+		const sessionID = uuid();
+		var setting: vscode.Uri = vscode.Uri.parse("untitled:"+sessionID+".txt");
 		console.log(setting);
 		vscode.workspace.openTextDocument(setting).then((a: vscode.TextDocument) => {
 			vscode.window.showTextDocument(a, 1, false).then(e => {
@@ -54,42 +82,33 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error(error);
 			debugger;
 		});
-	})
+	});
 
+	vscode.commands.registerCommand('smtransformer.saveStack', () => {
+		const editor = vscode.window.activeTextEditor;
+		const selectedText = editor!.document.getText(editor!.selection);
+		const sessionID = uuid();
+		var setting: vscode.Uri = vscode.Uri.parse("untitled:"+sessionID+".stack.json");
+		console.log(setting);
+		vscode.workspace.openTextDocument(setting).then((a: vscode.TextDocument) => {
+			vscode.window.showTextDocument(a, 1, false).then(e => {
+				const tStackStr = JSON.stringify(transformerStack, null, 2);
+				e.edit(edit => {
+					edit.insert(new vscode.Position(0, 0), tStackStr);
+				});
+			});
+		}, (error: any) => {
+			console.error(error);
+			debugger;
+		});
+	});
 
 	vscode.commands.registerCommand('smtransformer.toImp', ()=>{
-		const editor = vscode.window.activeTextEditor;
-		const fullText = editor?.document.getText()!;
-		let originalAst = new AST(fullText);
-
-		let selectedNode = getSelectedNode(originalAst);
-		if(selectedNode){
-			let res: AST;
-			let dirty: boolean;
-			[dirty, res] = transformer.toImp(selectedNode, originalAst, {}, "true");
-			if(dirty){
-				editor?.edit(edit => {edit.replace(getRange(editor), res.toString(-1, res.nodeList[0]))});
-			}
-			console.log(res.toString(-1, res.nodeList[0]));
-		}
+		let [dirty, res] = applyLocal("toImp", {});
 		vscode.window.showInformationMessage('To Imp from smtransformer!');
 	});
-	
-	vscode.commands.registerCommand('smtransformer.squashNegation', ()=>{
-		const editor = vscode.window.activeTextEditor;
-		const fullText = editor?.document.getText()!;
-		let originalAst = new AST(fullText);
-
-		let selectedNode = getSelectedNode(originalAst);
-		if(selectedNode){
-			let res: AST;
-			let dirty: boolean;
-			[dirty, res] = transformer.squashNegation(selectedNode, originalAst, {}, "true");
-			if(dirty){
-				editor?.edit(edit => {edit.replace(getRange(editor), res.toString(-1, res.nodeList[0]))});
-			}
-			console.log(res.toString(-1, res.nodeList[0]));
-		}
+	vscode.commands.registerCommand('smtransformer.squashNegation', () => {
+		let [dirty, res] = applyLocal("squashNegation", {});
 		vscode.window.showInformationMessage('squashNegation from smtransformer!');
 	});
 }

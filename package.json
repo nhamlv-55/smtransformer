@@ -30,6 +30,10 @@
 			{
 				"command": "smtransformer.squashNegation",
 				"title": "Squash Negation"
+			},
+			{
+				"command": "smtransformer.saveStack",
+				"title": "Save Transformer Stack"
 			}
 		]
 	},
