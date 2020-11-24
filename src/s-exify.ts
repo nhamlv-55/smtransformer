@@ -69,7 +69,8 @@ export function parse(input: string): SExp {
           "startOffset": startOffset,
           "endLine": line_number,
           "endOffset": offset,
-        });
+          });
+          node = "";
         }
         line_number++;
         offset = 0;
